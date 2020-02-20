@@ -279,7 +279,7 @@ export default class PackageInstallScripts {
     return `${manifest.name} @ ${manifest.version}`;
   }
 
-  addDependenciesToGraph(patterns: Set<string>, graph: Map<string, Set<string>>) {
+  addDependenciesToGraph(patterns: Array<string>, graph: Map<string, Set<string>>) {
     patterns.forEach((pattern: string) => {
       const pkg = this.resolver.getStrictResolvedPattern(pattern);
       const packageId = this.createPackageId(pkg);
@@ -288,7 +288,7 @@ export default class PackageInstallScripts {
         return;
       }
 
-      const dependencies = pkg._reference.dependencies;
+      const dependencies = !pkg._reference ? [] : pkg._reference.dependencies;
       const resolvedDependencies = dependencies.map(d => {
         const resolvedDependency = this.resolver.getStrictResolvedPattern(d);
         return this.createPackageId(resolvedDependency);
@@ -311,10 +311,12 @@ export default class PackageInstallScripts {
 
     ancestors.add(mother);
 
-    graph.get(mother).forEach((child: string) => {
+    const children = graph.get(mother) || new Set();
+
+    children.forEach((child: string) => {
       if (ancestors.has(child)) {
         connectionsToRemove.add(`${mother} -> ${child}`);
-        graph.get(mother).delete(child);
+        children.delete(child);
         return;
       }
 
@@ -327,7 +329,7 @@ export default class PackageInstallScripts {
 
   getConnectionsToRemoveToGetAcyclicGraph(seedPatterns: Array<string>): Set<string> {
     const dependencyGraph = new Map();
-    this.addDependenciesToGraph(new Set(seedPatterns), dependencyGraph);
+    this.addDependenciesToGraph(seedPatterns, dependencyGraph);
     const connectionsToRemove = new Set();
 
     const rootDependencies = seedPatterns.map(d => {
