@@ -292,23 +292,43 @@ export default class PackageInstallScripts {
     }
   }
 
-  addDependenciesToGraph(patterns: Array<string>, graph: Map<string, Array<string>>): void {
-    for (const pattern of patterns) {
+  addDependenciesToGraph(patterns: Set<string>, graph: Map<string, Set<string>>): void {
+    patterns.forEach((pattern: string) => {
       if (graph.has(pattern)) {
-        continue;
+        return;
       }
 
       const pkg = this.resolver.getStrictResolvedPattern(pattern);
       const dependencies = pkg._reference.dependencies;
-      graph.set(pattern, dependencies);
+      graph.set(pattern, new Set(dependencies));
       this.addDependenciesToGraph(dependencies, graph);
-    }
+    });
+  }
+
+  detectCycles(pattern: string, graph: Map<string, Set<string>>, ancestors: Set<string>, connectionsToRemove: Set<string>): void {
+
+    ancestors.add(pattern);
+
+    graph.get(pattern).forEach((dep: string) => {
+      if (ancestors.has(dep)) {
+        connectionsToRemove.add(`${pattern} -> ${dep}`);
+        graph.get(pattern).delete(dep);
+        return;
+      }
+
+      this.detectCycles(dep, graph, ancestors, connectionsToRemove);
+    });
+
+    ancestors.delete(pattern);
   }
 
   async init(seedPatterns: Array<string>): Promise<void> {
     debugger
     const dependencyGraph = new Map();
-    this.addDependenciesToGraph(seedPatterns, dependencyGraph);
+    dependencyGraph.set('root', new Set(seedPatterns));
+    this.addDependenciesToGraph(new Set(seedPatterns), dependencyGraph);
+    const connectionsToRemove = new Set();
+    this.detectCycles('root', dependencyGraph, new Set(), connectionsToRemove);
     debugger
     const workQueue = new Set();
     const installed = new Set();
