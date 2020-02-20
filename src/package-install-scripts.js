@@ -210,7 +210,11 @@ export default class PackageInstallScripts {
   }
 
   // find the next package to be installed
-  findInstallablePackage(workQueue: Set<Manifest>, installed: Set<Manifest>, connectionsToRemove: Set<string>): ?Manifest {
+  findInstallablePackage(
+    workQueue: Set<Manifest>,
+    installed: Set<Manifest>,
+    connectionsToRemove: Set<string>,
+  ): ?Manifest {
     for (const pkg of workQueue) {
       const ref = pkg._reference;
       invariant(ref, 'expected reference');
@@ -245,7 +249,7 @@ export default class PackageInstallScripts {
     workQueue: Set<Manifest>,
     installed: Set<Manifest>,
     waitQueue: Set<() => void>,
-    connectionsToRemove: Set<string>
+    connectionsToRemove: Set<string>,
   ): Promise<void> {
     while (workQueue.size > 0) {
       // find a installable package
@@ -272,11 +276,10 @@ export default class PackageInstallScripts {
   }
 
   createPackageId(manifest: Manifest): string {
-        return `${manifest.name} @ ${manifest.version}`;
+    return `${manifest.name} @ ${manifest.version}`;
   }
 
-
-  addDependenciesToGraph(patterns: Set<string>, graph: Map<string, Set<string>>): void {
+  addDependenciesToGraph(patterns: Set<string>, graph: Map<string, Set<string>>) {
     patterns.forEach((pattern: string) => {
       const pkg = this.resolver.getStrictResolvedPattern(pattern);
       const packageId = this.createPackageId(pkg);
@@ -295,7 +298,13 @@ export default class PackageInstallScripts {
     });
   }
 
-  detectCycles(mother: string, graph: Map<string, Set<string>>, ancestors: Set<string>, connectionsToRemove: Set<string>, visited: Set<string>): void {
+  detectCycles(
+    mother: string,
+    graph: Map<string, Set<string>>,
+    ancestors: Set<string>,
+    connectionsToRemove: Set<string>,
+    visited: Set<string>,
+  ) {
     if (visited.has(mother)) {
       return;
     }
@@ -331,7 +340,6 @@ export default class PackageInstallScripts {
   }
 
   async init(seedPatterns: Array<string>): Promise<void> {
-    
     const connectionsToRemove = this.getConnectionsToRemoveToGetAcyclicGraph(seedPatterns);
 
     const workQueue = new Set();
@@ -359,7 +367,9 @@ export default class PackageInstallScripts {
     // waitQueue acts like a semaphore to allow workers to register to be notified
     // when there are more work added to the work queue
     const waitQueue = new Set();
-    await Promise.all(set.spinners.map(spinner => this.worker(spinner, workQueue, installed, waitQueue, connectionsToRemove)));
+    await Promise.all(
+      set.spinners.map(spinner => this.worker(spinner, workQueue, installed, waitQueue, connectionsToRemove)),
+    );
     // generate built package as prebuilt one for offline mirror
     const offlineMirrorPath = this.config.getOfflineMirrorPath();
     if (this.config.packBuiltPackages && offlineMirrorPath) {
