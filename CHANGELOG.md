@@ -4,6 +4,10 @@ Please add one entry in this file for each change in Yarn's behavior. Use the sa
 
 ## Master
 
+- Optimize `yarn install` by implementing a cycle detection algorithm in linear time.
+
+  [#7920](https://github.com/yarnpkg/yarn/pull/7920) - [**Vincent Bailly**](https://github.com/VincentBailly)
+
 - Passes arguments following `--` when running a workspace script (`yarn workspace pkg run command -- arg`)
 
   [#7776](https://github.com/yarnpkg/yarn/pull/7776) - [**Jeff Valore**](https://twitter.com/rally25rs)
