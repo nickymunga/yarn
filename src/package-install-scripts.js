@@ -292,7 +292,24 @@ export default class PackageInstallScripts {
     }
   }
 
+  addDependenciesToGraph(patterns: Array<string>, graph: Map<string, Array<string>>): void {
+    for (const pattern of patterns) {
+      if (graph.has(pattern)) {
+        continue;
+      }
+
+      const pkg = this.resolver.getStrictResolvedPattern(pattern);
+      const dependencies = pkg._reference.dependencies;
+      graph.set(pattern, dependencies);
+      this.addDependenciesToGraph(dependencies, graph);
+    }
+  }
+
   async init(seedPatterns: Array<string>): Promise<void> {
+    debugger
+    const dependencyGraph = new Map();
+    this.addDependenciesToGraph(seedPatterns, dependencyGraph);
+    debugger
     const workQueue = new Set();
     const installed = new Set();
     const pkgs = this.resolver.getTopologicalManifests(seedPatterns);
