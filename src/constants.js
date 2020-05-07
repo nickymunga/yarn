@@ -34,7 +34,7 @@ export const CACHE_VERSION = 6;
 export const LOCKFILE_VERSION = 1;
 
 // max amount of network requests to perform concurrently
-export const NETWORK_CONCURRENCY = 8;
+export const NETWORK_CONCURRENCY = 8000;
 
 // HTTP timeout used when downloading packages
 export const NETWORK_TIMEOUT = 30 * 1000; // in milliseconds
