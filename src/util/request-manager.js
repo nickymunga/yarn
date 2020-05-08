@@ -204,6 +204,8 @@ export default class RequestManager {
 
     const retry = params => {
       const req = request(params);
+      let req2 = undefined;
+      let req3 = undefined;
       let inTheRace = [1];
       let stream = undefined;
       const callbacks = {};
@@ -212,7 +214,7 @@ export default class RequestManager {
         if (done) {
           return;
         }
-        const req3 = request(params);
+        req3 = request(params);
         inTheRace.push(3);
         req3.on('error', (...args) => {
           if (done) {
@@ -242,7 +244,7 @@ export default class RequestManager {
         if (done) {
           return;
         }
-        const req2 = request(params);
+        req2 = request(params);
         inTheRace.push(2);
         req2.on('error', (...args) => {
           if (done) {
@@ -304,6 +306,8 @@ export default class RequestManager {
         abort: () => {
           req.abort();
           req2 && req2.abort();
+          req3 && req3.abort();
+          done = true;
         },
 
         pipe: s => {
