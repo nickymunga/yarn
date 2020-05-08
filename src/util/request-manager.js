@@ -199,6 +199,122 @@ export default class RequestManager {
     }
   }
 
+  requestWithSmartRetry() {
+    const request = require('request');
+
+    const retry = params => {
+      const req = request(params);
+      let inTheRace = [1];
+      let stream = undefined;
+      const callbacks = {};
+      let done = false;
+      const b = setTimeout(() => {
+        if (done) {
+          return;
+        }
+        const req3 = request(params);
+        inTheRace.push(3);
+        req3.on('error', (...args) => {
+          if (done) {
+            return;
+          }
+          if (inTheRace.length === 1) {
+            callbacks['error'] && callbacks['error'](...args);
+            done = true;
+          }
+
+          inTheRace = inTheRace.filter(u => u !== 3);
+        });
+
+        req3.on('response', (...args) => {
+          if (done) {
+            return;
+          }
+
+          stream && req.pipe(stream);
+          done = true;
+          callbacks['response'] && callbacks['response'](...args);
+        });
+        req3.on('data', (...args) => callbacks['data'] && callbacks['data'](...args));
+      }, 1500);
+
+      const a = setTimeout(() => {
+        if (done) {
+          return;
+        }
+        const req2 = request(params);
+        inTheRace.push(2);
+        req2.on('error', (...args) => {
+          if (done) {
+            return;
+          }
+          if (inTheRace.length === 1) {
+            callbacks['error'] && callbacks['error'](...args);
+
+            done = true;
+          }
+          inTheRace = inTheRace.filter(u => u !== 2);
+        });
+
+        req2.on('response', (...args) => {
+          if (done) {
+            return;
+          }
+          stream && req.pipe(stream);
+          done = true;
+          callbacks['response'] && callbacks['response'](...args);
+        });
+
+        req2.on('data', (...args) => callbacks['data'] && callbacks['data'](...args));
+      }, 500);
+
+      req.on('error', (...args) => {
+        if (done) {
+          return;
+        }
+
+        if (inTheRace.length === 1) {
+          callbacks['error'] && callbacks['error'](...args);
+
+          done = true;
+        }
+
+        inTheRace = inTheRace.filter(u => u !== 1);
+      });
+
+      req.on('data', (...args) => callbacks['data'] && callbacks['data'](...args));
+
+      req.on('response', (...args) => {
+        if (done) {
+          return;
+        }
+
+        stream && req.pipe(stream);
+
+        done = true;
+
+        callbacks['response'] && callbacks['response'](...args);
+      });
+
+      return {
+        on: (event, callback) => {
+          callbacks[event] = callback;
+        },
+
+        abort: () => {
+          req.abort();
+          req2 && req2.abort();
+        },
+
+        pipe: s => {
+          stream = s;
+        },
+      };
+    };
+
+    return retry;
+  }
+
   /**
    * Lazy load `request` since it is exceptionally expensive to load and is
    * often not needed at all.
@@ -206,7 +322,7 @@ export default class RequestManager {
 
   _getRequestModule(): RequestModuleT {
     if (!this._requestModule) {
-      const request = require('request');
+      const request = this.requestWithSmartRetry();
       if (this.captureHar) {
         this._requestCaptureHar = new RequestCaptureHar(request);
         this._requestModule = this._requestCaptureHar.request.bind(this._requestCaptureHar);
