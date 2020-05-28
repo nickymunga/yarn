@@ -1,7 +1,7 @@
 {
-  "name": "yarn",
+  "name": "midgard-yarn",
   "installationMethod": "unknown",
-  "version": "1.23.0-0",
+  "version": "3.3.0",
   "license": "BSD-2-Clause",
   "preferGlobal": true,
   "description": "📦🐈 Fast, reliable, and secure dependency management.",
@@ -109,8 +109,8 @@
   },
   "repository": "yarnpkg/yarn",
   "bin": {
-    "yarn": "./bin/yarn.js",
-    "yarnpkg": "./bin/yarn.js"
+    "midgard-yarn": "./bin/yarn.js",
+    "midgard-yarnpkg": "./bin/yarn.js"
   },
   "scripts": {
     "build": "gulp build",
