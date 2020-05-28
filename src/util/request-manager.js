@@ -77,7 +77,6 @@ export default class RequestManager {
     this.offlineNoRequests = false;
     this._requestCaptureHar = null;
     this._requestModule = null;
-    this.offlineQueue = [];
     this.captureHar = false;
     this.httpsProxy = '';
     this.ca = null;
@@ -103,7 +102,6 @@ export default class RequestManager {
   ca: ?Array<string>;
   cert: ?string;
   key: ?string;
-  offlineQueue: Array<RequestOptions>;
   queue: Array<Object>;
   max: number;
   timeout: number;
@@ -202,6 +200,7 @@ export default class RequestManager {
 
     const retry = params => {
       const req = request(params);
+      req.pause();
       let req2 = undefined;
       let req3 = undefined;
       let inTheRace = [1];
@@ -215,6 +214,7 @@ export default class RequestManager {
           return;
         }
         req3 = request(params);
+        req3.pause();
         inTheRace.push(3);
         req3.on('error', (...args) => {
           if (done) {
@@ -236,7 +236,7 @@ export default class RequestManager {
           done = true;
           callbacks['response'] && callbacks['response'](...args);
 
-          !aborted && stream && req3.pipe(stream);
+          !aborted && stream && req3.pipe(stream) && req3.resume();
           req && req.abort();
           req2 && req2.abort();
         });
@@ -247,6 +247,7 @@ export default class RequestManager {
           return;
         }
         req2 = request(params);
+        req2.pause();
         inTheRace.push(2);
         req2.on('error', (...args) => {
           if (done) {
@@ -266,7 +267,7 @@ export default class RequestManager {
           }
           done = true;
           callbacks['response'] && callbacks['response'](...args);
-          !aborted && stream && req2.pipe(stream);
+          !aborted && stream && req2.pipe(stream) && req2.resume();
           req && req.abort();
           req3 && req3.abort();
         });
@@ -295,7 +296,7 @@ export default class RequestManager {
         done = true;
 
         callbacks['response'] && callbacks['response'](...args);
-        !aborted && stream &&  req.pipe(stream);
+        !aborted && stream &&  req.pipe(stream) && req.resume();
           req2 && req2.abort();
           req3 && req3.abort();
 
@@ -367,7 +368,21 @@ export default class RequestManager {
     );
 
     const promise = new Promise((resolve, reject) => {
-      this.queue.push({params, reject, resolve});
+
+      // We keep node up until this promise is resolved or rejected
+      const t = setTimeout(() => {}, 3000000);
+
+
+      const rej = (...args) => {
+        reject(...args);
+        clearTimeout(t);
+      }
+      const res = (...args) => {
+        resolve(...args);
+        clearTimeout(t);
+      }
+
+      this.queue.push({params, reject: rej, resolve: res});
       this.shiftQueue();
     });
 
@@ -438,41 +453,9 @@ export default class RequestManager {
    */
 
   queueForRetry(opts: RequestOptions) {
-    if (opts.retryReason) {
-      let containsReason = false;
-
-      for (const queuedOpts of this.offlineQueue) {
-        if (queuedOpts.retryReason === opts.retryReason) {
-          containsReason = true;
-          break;
-        }
-      }
-
-      if (!containsReason) {
-        this.reporter.info(opts.retryReason);
-      }
-    }
-
-    if (!this.offlineQueue.length) {
-      this.initOfflineRetry();
-    }
-
-    this.offlineQueue.push(opts);
-  }
-
-  /**
-   * Begin timers to retry failed requests when we possibly establish network connectivity
-   * again.
-   */
-
-  initOfflineRetry() {
-    setTimeout(() => {
-      const queue = this.offlineQueue;
-      this.offlineQueue = [];
-      for (const opts of queue) {
-        this.execute(opts);
-      }
-    }, 3000);
+    this.queue.splice(0, 0, opts);
+    this.running--;
+    this.shiftQueue();
   }
 
   /**

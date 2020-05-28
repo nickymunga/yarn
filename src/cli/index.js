@@ -256,8 +256,8 @@ export async function main({
   });
 
   const exit = exitCode => {
-    process.exitCode = exitCode || 0;
     reporter.close();
+    process.exit(exitCode || 0);
   };
 
   reporter.initPeakMemoryCounter();
