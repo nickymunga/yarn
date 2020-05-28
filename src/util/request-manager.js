@@ -9,7 +9,6 @@ import RequestCaptureHar from 'request-capture-har';
 
 import type {Reporter} from '../reporters/index.js';
 import {MessageError, ResponseError, OneTimePasswordError} from '../errors.js';
-import BlockingQueue from './blocking-queue.js';
 import * as constants from '../constants.js';
 import * as network from './network.js';
 import map from '../util/map.js';
@@ -44,7 +43,6 @@ type RequestParams<T> = {
   },
   buffer?: boolean,
   method?: RequestMethods,
-  queue?: BlockingQueue,
   json?: boolean,
   body?: mixed,
   proxy?: string,
@@ -210,6 +208,8 @@ export default class RequestManager {
       let stream = undefined;
       const callbacks = {};
       let done = false;
+      let aborted = false;
+
       const b = setTimeout(() => {
         if (done) {
           return;
@@ -233,11 +233,13 @@ export default class RequestManager {
             return;
           }
 
-          stream && req.pipe(stream);
           done = true;
           callbacks['response'] && callbacks['response'](...args);
+
+          !aborted && stream && req3.pipe(stream);
+          req && req.abort();
+          req2 && req2.abort();
         });
-        req3.on('data', (...args) => callbacks['data'] && callbacks['data'](...args));
       }, 1500);
 
       const a = setTimeout(() => {
@@ -262,12 +264,12 @@ export default class RequestManager {
           if (done) {
             return;
           }
-          stream && req.pipe(stream);
           done = true;
           callbacks['response'] && callbacks['response'](...args);
+          !aborted && stream && req2.pipe(stream);
+          req && req.abort();
+          req3 && req3.abort();
         });
-
-        req2.on('data', (...args) => callbacks['data'] && callbacks['data'](...args));
       }, 500);
 
       req.on('error', (...args) => {
@@ -284,18 +286,19 @@ export default class RequestManager {
         inTheRace = inTheRace.filter(u => u !== 1);
       });
 
-      req.on('data', (...args) => callbacks['data'] && callbacks['data'](...args));
-
       req.on('response', (...args) => {
         if (done) {
           return;
         }
 
-        stream && req.pipe(stream);
 
         done = true;
 
         callbacks['response'] && callbacks['response'](...args);
+        !aborted && stream &&  req.pipe(stream);
+          req2 && req2.abort();
+          req3 && req3.abort();
+
       });
 
       return {
@@ -304,6 +307,7 @@ export default class RequestManager {
         },
 
         abort: () => {
+          aborted = true;
           req.abort();
           req2 && req2.abort();
           req3 && req3.abort();
@@ -625,11 +629,6 @@ export default class RequestManager {
 
     req.on('error', onError);
 
-    const queue = params.queue;
-    if (queue) {
-      req.on('data', queue.stillActive.bind(queue));
-    }
-
     const process = params.process;
     if (process) {
       req.on('response', res => {
@@ -638,11 +637,17 @@ export default class RequestManager {
         }
 
         const description = `${res.statusCode} ${http.STATUS_CODES[res.statusCode]}`;
-        reject(new ResponseError(this.reporter.lang('requestFailed', description), res.statusCode));
+        queueForRetry("extraction failed (statusCode)") || reject(new ResponseError(this.reporter.lang('requestFailed', description), res.statusCode));
 
         req.abort();
       });
-      process(req, resolve, reject);
+
+      // We retry when we fail to process the content
+      const rej = (err) => {
+        queueForRetry("extraction failed (extractor)") || reject(err);
+      }
+
+      process(req, resolve, rej);
     }
   }
 
