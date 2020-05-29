@@ -202,45 +202,11 @@ export default class RequestManager {
       const req = request(params);
       req.pause();
       let req2 = undefined;
-      let req3 = undefined;
       let inTheRace = [1];
       let stream = undefined;
       const callbacks = {};
       let done = false;
       let aborted = false;
-
-      const b = setTimeout(() => {
-        if (done) {
-          return;
-        }
-        req3 = request(params);
-        req3.pause();
-        inTheRace.push(3);
-        req3.on('error', (...args) => {
-          if (done) {
-            return;
-          }
-          if (inTheRace.length === 1) {
-            callbacks['error'] && callbacks['error'](...args);
-            done = true;
-          }
-
-          inTheRace = inTheRace.filter(u => u !== 3);
-        });
-
-        req3.on('response', (...args) => {
-          if (done) {
-            return;
-          }
-
-          done = true;
-          callbacks['response'] && callbacks['response'](...args);
-
-          !aborted && stream && req3.pipe(stream) && req3.resume();
-          req && req.abort();
-          req2 && req2.abort();
-        });
-      }, 1500);
 
       const a = setTimeout(() => {
         if (done) {
@@ -269,7 +235,6 @@ export default class RequestManager {
           callbacks['response'] && callbacks['response'](...args);
           !aborted && stream && req2.pipe(stream) && req2.resume();
           req && req.abort();
-          req3 && req3.abort();
         });
       }, 500);
 
@@ -298,7 +263,6 @@ export default class RequestManager {
         callbacks['response'] && callbacks['response'](...args);
         !aborted && stream &&  req.pipe(stream) && req.resume();
           req2 && req2.abort();
-          req3 && req3.abort();
 
       });
 
@@ -311,7 +275,6 @@ export default class RequestManager {
           aborted = true;
           req.abort();
           req2 && req2.abort();
-          req3 && req3.abort();
           done = true;
         },
 
