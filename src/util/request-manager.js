@@ -15,6 +15,20 @@ import map from '../util/map.js';
 
 import typeof * as RequestModuleT from 'request';
 
+import { Transform } from "stream";
+
+/*
+ * PassThrough stream in the pipelines to add
+ * A large buffer that can handle a large amount of backpressure that arises
+ * when the cpu cannot keep up with the inflow from the network.
+ */
+class MyTransform extends Transform {
+  constructor() {
+    super({transform: (chunk, encoding, callback) => { callback(null, chunk) }, highWaterMark: 16384 * 10000})
+
+  }
+}
+
 // Initialize DNS cache so we don't look up the same
 // domains like registry.yarnpkg.com over and over again
 // for each request.
@@ -199,11 +213,12 @@ export default class RequestManager {
     const request = require('request');
 
     const retry = params => {
+      const transformStream = new MyTransform();
       const req = request(params);
       req.pause();
       let req2 = undefined;
       let inTheRace = [1];
-      let stream = undefined;
+      let streams = [];
       const callbacks = {};
       let done = false;
       let aborted = false;
@@ -233,7 +248,11 @@ export default class RequestManager {
           }
           done = true;
           callbacks['response'] && callbacks['response'](...args);
-          !aborted && stream && req2.pipe(stream) && req2.resume();
+          if(!aborted) {
+            req2.pipe(transformStream);
+            streams.forEach(s => transformStream.pipe(s));
+            req2.resume();
+          }
           req && req.abort();
         });
       }, 500);
@@ -257,12 +276,15 @@ export default class RequestManager {
           return;
         }
 
-
         done = true;
 
         callbacks['response'] && callbacks['response'](...args);
-        !aborted && stream &&  req.pipe(stream) && req.resume();
-          req2 && req2.abort();
+        if(!aborted) {
+          req.pipe(transformStream);
+          streams.forEach(s => transformStream.pipe(s));
+          req.resume();
+        }
+        req2 && req2.abort();
 
       });
 
@@ -279,7 +301,8 @@ export default class RequestManager {
         },
 
         pipe: s => {
-          stream = s;
+          streams.push(s);
+          return s;
         },
       };
     };
