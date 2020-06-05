@@ -24,7 +24,7 @@ import { Transform } from "stream";
  */
 class MyTransform extends Transform {
   constructor() {
-    super({transform: (chunk, encoding, callback) => { callback(null, chunk) }, highWaterMark: 16384 * 10000})
+    super({transform: (chunk, encoding, callback) => { callback(null, chunk) }, highWaterMark: 16384 * 100000})
 
   }
 }
@@ -355,8 +355,11 @@ export default class RequestManager {
 
     const promise = new Promise((resolve, reject) => {
 
-      // We keep node up until this promise is resolved or rejected
-      const t = setTimeout(() => {}, 3000000);
+      // We keep node up until this promise is resolved or rejected.
+      const t = setTimeout(() => {
+        throw new Error(`Fetching/extracting of package ${params.url} seems to be hanging.`);
+
+      }, 10 * 60 * 1000);
 
 
       const rej = (...args) => {
