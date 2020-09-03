@@ -513,20 +513,42 @@ export function copy(src: string, dest: string, reporter: Reporter): Promise<voi
   return copyBulk([{src, dest}], reporter);
 }
 
-export function spawnWorkers(): Worker[] {
-  const {Worker} = require('worker_threads');
-  const workers = [];
-  const numberOfCores = os.cpus().length;
-  for (let i = 0; i < Math.ceil(numberOfCores / 2); i++) {
-    const worker = new Worker(require('path').join(__dirname, '..', 'worker.js'));
-    worker.setMaxListeners(1);
-    workers.push(worker);
-  }
-  return workers;
+const { Worker } = require('worker_threads');
+function spawnWorker() {
+    return new Worker(require('path').join(__dirname, '..', 'worker.js'));
 }
 
-function killWorkers(workers) {
-  workers.forEach(w => w.terminate());
+
+export function createWorkerQueue() {
+  const free = [];
+  const waitingList = [];
+  const numberOfCores = os.cpus().length;
+
+  const tick = () => {
+    if (free.length === 0 || waitingList.length === 0) { return; }
+    const worker = free.splice(0,1)[0];
+    const resolve = waitingList.splice(0,1)[0];
+    resolve(worker);
+  };
+
+  for (let i = 0; i < Math.ceil(numberOfCores / 2); i++) {
+    const worker = spawnWorker();
+    free.push(worker);
+  }
+  return { next: () => {
+    return new Promise(resolve => {
+      waitingList.push((worker) => {
+        resolve({
+          worker,
+          done: () => { free.push(worker); tick() },
+          failed: () => { worker.terminate(); free.push(spawnWorker()); tick() }
+        });
+      });
+      tick();
+    });
+  }, terminate: () => {
+    free.forEach(w => w.terminate());
+  }};
 }
 
 export async function copyBulk(
@@ -548,9 +570,8 @@ export async function copyBulk(
     artifactFiles: (_events && _events.artifactFiles) || [],
   };
 
-  let next = 0;
   const BIN_SIZE = 50;
-  const workers = spawnWorkers();
+  const workerQueue = createWorkerQueue();
 
   const actions: CopyActions = await buildActionsForCopy(queue, events, events.possibleExtraneous, reporter);
   events.onStart(actions.file.length / BIN_SIZE + actions.symlink.length + actions.link.length);
@@ -576,26 +597,36 @@ export async function copyBulk(
       resolve();
     }
 
-    let running = 0;
+    let running = split.length;
     split.forEach(ac => {
-      const worker = workers[next % workers.length];
-      const {port1, port2} = new (require('worker_threads')).MessageChannel();
-      next += 1;
-      const onError = err => {
-        reject(err.err);
-      };
-      const onMessage = () => {
-        events.onProgress(ac.dest);
-        running -= 1;
-        running === 0 && resolve();
-      };
-      port1.on('error', onError);
-      port1.on('message', onMessage);
-      running += 1;
-      worker.postMessage({actions: ac.map(a => ({src: a.src, dest: a.dest})), port: port2}, [port2]);
+      workerQueue.next().then( o => {
+        const { worker, done, failed } = o;
+        const onError = err => {
+          worker.off('error', onError);
+          worker.off('close', onError);
+          worker.off('message', onMessage);
+          failed();
+          reject(err.err);
+        };
+        const onMessage = () => {
+          worker.off('error', onError);
+          worker.off('close', onError);
+          worker.off('message', onMessage);
+          events.onProgress(ac.dest);
+          done();
+          running -= 1;
+          if (running === 0) {
+            resolve();
+          }
+        };
+        worker.on('error', onError);
+        worker.on('close', onError);
+        worker.on('message', onMessage);
+        worker.postMessage({actions: ac.map(a => ({src: a.src, dest: a.dest}))});
+      });
     });
   })
-  .finally(() => killWorkers(workers));
+  .finally(() => workerQueue.terminate());
 
 
   // we need to copy symlinks last as they could reference files we were copying
