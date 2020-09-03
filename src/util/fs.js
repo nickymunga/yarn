@@ -588,7 +588,7 @@ export async function copyBulk(
         worker.off('error', onError);
         worker.off('close', onError);
         worker.off('message', onMessage);
-        events.onProgress(ac.length);
+        ac.forEach(a => events.onProgress(a.dest));
         running -= 1;
         if (running === 0) {
           resolve();
