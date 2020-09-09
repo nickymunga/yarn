@@ -600,7 +600,9 @@ export async function copyBulk(
       worker.on('message', onMessage);
       const actions = ac.map(action => ({src: action.src, dest: action.dest}));
       actions.forEach(action =>
-        reporter.verbose(reporter.lang('verboseFileCopy', action.src, action.dest, `worker ${i}`)),
+        reporter.verbose(
+          reporter.lang('verboseFileCopy', action.src, action.dest, `worker ${i}, total ${actions.length}`),
+        ),
       );
       worker.postMessage({actions});
     });
