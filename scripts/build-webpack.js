@@ -78,7 +78,7 @@ const compiler = webpack({
     rules: [
       {
         test: /\.js$/,
-        exclude: /node_modules|Caches/,
+        exclude: /Caches/,
         loader: require.resolve('babel-loader')
       },
       {
