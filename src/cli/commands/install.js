@@ -1196,7 +1196,7 @@ export async function run(config: Config, reporter: Reporter, flags: Object, arg
 
   // Let time for all the output to be printed and then hard exit.
   // This fixes an issue where a hanging request would keep node alive.
-  setTimeout(() => process.exit(process.exitCode || 0), 1000);
+  //setTimeout(() => process.exit(process.exitCode || 0), 0);
 }
 
 export async function wrapLifecycle(config: Config, flags: Object, factory: () => Promise<void>): Promise<void> {

@@ -8,6 +8,7 @@ import fs from 'fs';
 import globModule from 'glob';
 import os from 'os';
 import path from 'path';
+import mkdirp from 'mkdirp';
 
 import BlockingQueue from './blocking-queue.js';
 import * as promise from './promise.js';
@@ -26,24 +27,23 @@ export const constants =
 
 export const lockQueue = new BlockingQueue('fs lock');
 
-export const readFileBuffer = promisify(fs.readFile);
-export const open: (path: string, flags: string, mode?: number) => Promise<Array<string>> = promisify(fs.open);
-export const writeFile: (path: string, data: string | Buffer, options?: Object) => Promise<void> = promisify(
-  fs.writeFile,
-);
-export const readlink: (path: string, opts: void) => Promise<string> = promisify(fs.readlink);
-export const realpath: (path: string, opts: void) => Promise<string> = promisify(fs.realpath);
-export const readdir: (path: string, opts: void) => Promise<Array<string>> = promisify(fs.readdir);
-export const rename: (oldPath: string, newPath: string) => Promise<void> = promisify(fs.rename);
-export const access: (path: string, mode?: number) => Promise<void> = promisify(fs.access);
-export const stat: (path: string) => Promise<fs.Stats> = promisify(fs.stat);
-export const mkdirp: (path: string) => Promise<void> = promisify(require('mkdirp'));
+export const readFileBuffer = fs.promises.readFile;
+export const open: (path: string, flags: string, mode?: number) => Promise<Array<string>> = fs.promises.open;
+export const writeFile: (path: string, data: string | Buffer, options?: Object) => Promise<void> =
+  fs.promises.writeFile;
+export const readlink: (path: string, opts: void) => Promise<string> = fs.promises.readlink;
+export const realpath: (path: string, opts: void) => Promise<string> = fs.promises.realpath;
+export const readdir: (path: string, opts: void) => Promise<Array<string>> = fs.promises.readdir;
+export const rename: (oldPath: string, newPath: string) => Promise<void> = fs.promises.rename;
+export const access: (path: string, mode?: number) => Promise<void> = fs.promises.access;
+export const stat: (path: string) => Promise<fs.Stats> = fs.promises.stat;
 export const exists: (path: string) => Promise<boolean> = promisify(fs.exists, true);
-export const lstat: (path: string) => Promise<fs.Stats> = promisify(fs.lstat);
-export const chmod: (path: string, mode: number | string) => Promise<void> = promisify(fs.chmod);
-export const link: (src: string, dst: string) => Promise<fs.Stats> = promisify(fs.link);
+export const lstat: (path: string) => Promise<fs.Stats> = fs.promises.lstat;
+export const chmod: (path: string, mode: number | string) => Promise<void> = fs.promises.chmod;
+export const link: (src: string, dst: string) => Promise<fs.Stats> = fs.promises.link;
 export const glob: (path: string, options?: Object) => Promise<Array<string>> = promisify(globModule);
 export {unlink};
+export {mkdirp};
 
 // fs.copyFile uses the native file copying instructions on the system, performing much better
 // than any JS-based solution and consumes fewer resources. Repeated testing to fine tune the
@@ -286,8 +286,6 @@ async function buildActionsForCopy(
         destParts.pop();
       }
 
-      // push all files to queue
-      invariant(srcFiles, 'src files not initialised');
       let remaining = srcFiles.length;
       if (!remaining) {
         onDone();
@@ -305,6 +303,7 @@ async function buildActionsForCopy(
         });
       }
     } else if (srcStat.isFile()) {
+      throw new Error("hi")
       onFresh();
       actions.file.push({
         src,

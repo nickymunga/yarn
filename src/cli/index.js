@@ -1,4 +1,9 @@
 /* @flow */
+// const log = require('why-is-node-running') // should be your first require
+// setInterval(function () {
+//   console.log("------------------------------------")
+//   log() // logs out active handles that are keeping node running
+// }, 1000)
 
 import http from 'http';
 import net from 'net';
@@ -256,6 +261,7 @@ export async function main({
   });
 
   const exit = exitCode => {
+    console.log(exitCode)
     process.exitCode = exitCode || 0;
     reporter.close();
   };
@@ -493,7 +499,7 @@ export async function main({
 
     const errorReportLoc = writeErrorReport(log);
 
-    reporter.error(reporter.lang('unexpectedError', err.message));
+    reporter.verbose(reporter.lang('unexpectedError', err.message));
 
     if (errorReportLoc) {
       reporter.info(reporter.lang('bugReport', errorReportLoc));
@@ -596,6 +602,8 @@ export async function main({
       }
     })
     .catch((err: Error) => {
+      console.log(err)
+      //console.log( process._getActiveRequests().map(toString));
       reporter.verbose(err.stack);
 
       if (err instanceof ProcessTermError && reporter.isSilent) {
@@ -611,11 +619,9 @@ export async function main({
       if (command.getDocsInfo) {
         reporter.info(command.getDocsInfo);
       }
-
       if (err instanceof ProcessTermError) {
         return exit(err.EXIT_CODE || 1);
       }
-
       return exit(1);
     });
 }
