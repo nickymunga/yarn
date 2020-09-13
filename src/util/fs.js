@@ -548,14 +548,12 @@ export async function copyBulk(
     ignoreBasenames: (_events && _events.ignoreBasenames) || [],
     artifactFiles: (_events && _events.artifactFiles) || [],
   };
-
-  const workers = createWorkers();
-
   const actions: CopyActions = await buildActionsForCopy(queue, events, events.possibleExtraneous, reporter);
   events.onStart(actions.file.length + actions.symlink.length + actions.link.length);
 
   const fileActions: Array<CopyFileAction> = actions.file;
 
+  const workers = createWorkers();
   await new Promise((resolve, reject) => {
     const split = fileActions
       .reduce(
