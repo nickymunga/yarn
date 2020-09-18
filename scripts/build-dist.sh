@@ -38,7 +38,7 @@ cp README.md dist/
 cp LICENSE dist/
 # Only use the legacy version for NPM builds so we are compatible
 # with any Node >= 4 and still small in terms of size.
-cp artifacts/yarn-$version.js dist/lib/cli.js
+cp artifacts/yarn-legacy-$version.js dist/lib/cli.js
 cp bin/{yarn.js,yarn,yarnpkg,*.cmd} dist/bin/
 chmod +x dist/bin/*
 
