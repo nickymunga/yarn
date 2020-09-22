@@ -14,7 +14,7 @@ import BlockingQueue from './blocking-queue.js';
 import * as promise from './promise.js';
 import {promisify} from './promise.js';
 import map from './map.js';
-import {copyFile, fileDatesEqual, unlink} from './fs-normalized.js';
+import {fileDatesEqual, unlink} from './fs-normalized.js';
 
 export const constants =
   typeof fs.constants !== 'undefined'
@@ -27,22 +27,31 @@ export const constants =
 
 export const lockQueue = new BlockingQueue('fs lock');
 
-export const readFileBuffer = promisify(fs.readFile);
-export const open: (path: string, flags: string, mode?: number) => Promise<Array<string>> = promisify(fs.open);
-export const writeFile: (path: string, data: string | Buffer, options?: Object) => Promise<void> = promisify(
+function promiseImpl(fn: Function, ...rest): Function {
+  return fs.promises && fs.promises[fn.name] ? fs.promises[fn.name] : promisify(fn, ...rest);
+}
+
+export const readFileBuffer = promiseImpl(fs.readFile);
+export const open: (path: string, flags: string, mode?: number) => Promise<Array<string>> = promiseImpl(fs.open);
+export const writeFile: (path: string, data: string | Buffer, options?: Object) => Promise<void> = promiseImpl(
   fs.writeFile,
 );
-export const readlink: (path: string, opts: void) => Promise<string> = promisify(fs.readlink);
-export const realpath: (path: string, opts: void) => Promise<string> = promisify(fs.realpath);
-export const readdir: (path: string, opts: void) => Promise<Array<string>> = promisify(fs.readdir);
-export const rename: (oldPath: string, newPath: string) => Promise<void> = promisify(fs.rename);
-export const access: (path: string, mode?: number) => Promise<void> = promisify(fs.access);
-export const stat: (path: string) => Promise<fs.Stats> = promisify(fs.stat);
-export const exists: (path: string) => Promise<boolean> = promisify(fs.exists, true);
-export const lstat: (path: string) => Promise<fs.Stats> = promisify(fs.lstat);
-export const chmod: (path: string, mode: number | string) => Promise<void> = promisify(fs.chmod);
-export const link: (src: string, dst: string) => Promise<fs.Stats> = promisify(fs.link);
-export const glob: (path: string, options?: Object) => Promise<Array<string>> = promisify(globModule);
+export const readlink: (path: string, opts: void) => Promise<string> = promiseImpl(fs.readlink);
+export const realpath: (path: string, opts: void) => Promise<string> = promiseImpl(fs.realpath);
+export const readdir: (path: string, opts: void) => Promise<Array<string>> = promiseImpl(fs.readdir);
+export const rename: (oldPath: string, newPath: string) => Promise<void> = promiseImpl(fs.rename);
+export const access: (path: string, mode?: number) => Promise<void> = promiseImpl(fs.access);
+export const stat: (path: string) => Promise<fs.Stats> = promiseImpl(fs.stat);
+export const exists: (path: string) => Promise<boolean> = promiseImpl(fs.exists, true);
+export const lstat: (path: string) => Promise<fs.Stats> = promiseImpl(fs.lstat);
+export const chmod: (path: string, mode: number | string) => Promise<void> = promiseImpl(fs.chmod);
+export const link: (src: string, dst: string) => Promise<fs.Stats> = promiseImpl(fs.link);
+export const glob: (path: string, options?: Object) => Promise<Array<string>> = promiseImpl(globModule);
+export const fsSymlink: (
+  target: string,
+  path: string,
+  type?: 'dir' | 'file' | 'junction',
+) => Promise<void> = promiseImpl(fs.symlink);
 export {unlink, mkdirp};
 
 // fs.copyFile uses the native file copying instructions on the system, performing much better
@@ -50,9 +59,6 @@ export {unlink, mkdirp};
 // concurrency level revealed 128 as the sweet spot on a quad-core, 16 CPU Intel system with SSD.
 const CONCURRENT_QUEUE_ITEMS = fs.copyFile ? 128 : 4;
 
-const fsSymlink: (target: string, path: string, type?: 'dir' | 'file' | 'junction') => Promise<void> = promisify(
-  fs.symlink,
-);
 const invariant = require('invariant');
 const stripBOM = require('strip-bom');
 
@@ -513,14 +519,14 @@ export function copy(src: string, dest: string, reporter: Reporter): Promise<voi
   return copyBulk([{src, dest}], reporter);
 }
 
-const { Worker } = require('worker_threads');
-function spawnWorker() {
-    return new Worker(require('path').join(__dirname, '..', 'worker.js'));
+const {Worker} = require('worker_threads');
+function spawnWorker(): Worker {
+  return new Worker(require('path').join(__dirname, '..', 'worker.js'));
 }
 
-const numberOfWorkers = Math.ceil(os.cpus().length/ 2)
+const numberOfWorkers = Math.ceil(os.cpus().length / 2);
 
-export function createWorkers() {
+export function createWorkers(): Worker[] {
   const workers = [];
 
   for (let i = 0; i < numberOfWorkers; i++) {
