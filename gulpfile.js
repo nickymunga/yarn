@@ -30,7 +30,7 @@ const build = (lib, opts) =>
       .pipe(gulp.dest(lib));
 
 gulp.task('build', () =>
-  build('lib', babelRc.env[majorVer >= 5 ? 'node5' : 'pre-node5'])
+  build('lib', babelRc)
 );
 
 gulp.task('default', gulp.task('build'));

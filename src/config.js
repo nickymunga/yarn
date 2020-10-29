@@ -4,7 +4,6 @@ import type {RegistryNames, ConfigRegistries} from './registries/index.js';
 import type {Reporter} from './reporters/index.js';
 import type {Manifest, PackageRemote, WorkspacesManifestMap, WorkspacesConfig} from './types.js';
 import type PackageReference from './package-reference.js';
-import {execFromManifest} from './util/execute-lifecycle-script.js';
 import {resolveWithHome} from './util/path.js';
 import {boolifyWithDefault} from './util/conversion.js';
 import normalizeManifest from './util/normalize-manifest/index.js';
@@ -589,6 +588,7 @@ export default class Config {
     if (this.ignoreScripts) {
       return Promise.resolve();
     } else {
+      const { execFromManifest } = require("./util/execute-lifecycle-script.js");
       return execFromManifest(this, commandName, cwd || this.cwd);
     }
   }

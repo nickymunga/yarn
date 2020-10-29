@@ -27,7 +27,6 @@ import {normalizePattern} from '../../util/normalize-pattern.js';
 import * as fs from '../../util/fs.js';
 import map from '../../util/map.js';
 import {version as YARN_VERSION, getInstallationMethod} from '../../util/yarn-version.js';
-import {generatePnpMap} from '../../util/generate-pnp-map.js';
 import WorkspaceLayout from '../../workspace-layout.js';
 import ResolutionMap from '../../resolution-map.js';
 import guessName from '../../util/guess-name';
@@ -673,6 +672,7 @@ export class Install {
         callThroughHook('pnpStep', async () => {
           const pnpPath = `${this.config.lockfileFolder}/${constants.PNP_FILENAME}`;
 
+          const { generatePnpMap } = require("../../util/generate-pnp-map.js");
           const code = await generatePnpMap(this.config, flattenedTopLevelPatterns, {
             resolver: this.resolver,
             reporter: this.reporter,

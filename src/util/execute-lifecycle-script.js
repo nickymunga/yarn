@@ -8,7 +8,6 @@ import * as fs from './fs.js';
 import {dynamicRequire} from './dynamic-require.js';
 import {makePortableProxyScript} from './portable-script.js';
 import {fixCmdWinSlashes} from './fix-cmd-win-slashes.js';
-import {getBinFolder as getGlobalBinFolder, run as globalRun} from '../cli/commands/global.js';
 
 const path = require('path');
 
@@ -183,6 +182,7 @@ export async function makeEnv(
 
   // Add global bin folder if it is not present already, as some packages depend
   // on a globally-installed version of node-gyp.
+  const getGlobalBinFolder = require("../cli/commands/global.js").getBinFolder;
   const globalBin = await getGlobalBinFolder(config, {});
   if (pathParts.indexOf(globalBin) === -1) {
     pathParts.unshift(globalBin);
@@ -317,6 +317,7 @@ async function _checkForGyp(config: Config, paths: Array<string>): Promise<void>
   reporter.info(reporter.lang('packageRequiresNodeGyp'));
 
   try {
+    const globalRun = require("../cli/commands/global.js").run;
     await globalRun(config, reporter, {}, ['add', 'node-gyp']);
   } catch (e) {
     throw new MessageError(reporter.lang('nodeGypAutoInstallFailed', e.message));
