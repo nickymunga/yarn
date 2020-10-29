@@ -417,7 +417,7 @@ export class Install {
       this.flags.flat = true;
     }
 
-    return {
+    const result = {
       requests: [...resolutionDeps, ...deps],
       patterns,
       manifest,
@@ -425,6 +425,7 @@ export class Install {
       ignorePatterns,
       workspaceLayout,
     };
+    return result;
   }
 
   /**
@@ -645,91 +646,19 @@ export class Install {
         this.markIgnored(ignorePatterns);
         this.reporter.step(curr, total, this.reporter.lang('fetchingPackages'), emoji.get('truck'));
         const manifests: Array<Manifest> = await fetcher.fetch(this.resolver.getManifests(), this.config);
+
+        const map = manifests.map(o => ({ name: o.name, version: o.version, location: o._loc }))
+        require("fs").writeFileSync("map.json", JSON.stringify(map))
+
+        let resolutions = this.resolver.patterns;
+        resolutions = Object.keys(resolutions).map(k => ({ key: k, version: resolutions[k].version }));
+        require("fs").writeFileSync("resolutions.json", JSON.stringify(resolutions))
+
+
         this.resolver.updateManifests(manifests);
         await compatibility.check(this.resolver.getManifests(), this.config, this.flags.ignoreEngines);
       }),
     );
-
-    steps.push((curr: number, total: number) =>
-      callThroughHook('linkStep', async () => {
-        // remove integrity hash to make this operation atomic
-        await this.integrityChecker.removeIntegrityFile();
-        this.reporter.step(curr, total, this.reporter.lang('linkingDependencies'), emoji.get('link'));
-        flattenedTopLevelPatterns = this.preparePatternsForLinking(
-          flattenedTopLevelPatterns,
-          manifest,
-          this.config.lockfileFolder === this.config.cwd,
-        );
-        await this.linker.init(flattenedTopLevelPatterns, workspaceLayout, {
-          linkDuplicates: this.flags.linkDuplicates,
-          ignoreOptional: this.flags.ignoreOptional,
-        });
-      }),
-    );
-
-    if (this.config.plugnplayEnabled) {
-      steps.push((curr: number, total: number) =>
-        callThroughHook('pnpStep', async () => {
-          const pnpPath = `${this.config.lockfileFolder}/${constants.PNP_FILENAME}`;
-
-          const { generatePnpMap } = require("../../util/generate-pnp-map.js");
-          const code = await generatePnpMap(this.config, flattenedTopLevelPatterns, {
-            resolver: this.resolver,
-            reporter: this.reporter,
-            targetPath: pnpPath,
-            workspaceLayout,
-          });
-
-          try {
-            const file = await fs.readFile(pnpPath);
-            if (file === code) {
-              return;
-            }
-          } catch (error) {}
-
-          await fs.writeFile(pnpPath, code);
-          await fs.chmod(pnpPath, 0o755);
-        }),
-      );
-    }
-
-    steps.push((curr: number, total: number) =>
-      callThroughHook('buildStep', async () => {
-        this.reporter.step(
-          curr,
-          total,
-          this.flags.force ? this.reporter.lang('rebuildingPackages') : this.reporter.lang('buildingFreshPackages'),
-          emoji.get('hammer'),
-        );
-
-        if (this.config.ignoreScripts) {
-          this.reporter.warn(this.reporter.lang('ignoredScripts'));
-        } else {
-          await this.scripts.init(flattenedTopLevelPatterns);
-        }
-      }),
-    );
-
-    if (this.flags.har) {
-      steps.push(async (curr: number, total: number) => {
-        const formattedDate = new Date().toISOString().replace(/:/g, '-');
-        const filename = `yarn-install_${formattedDate}.har`;
-        this.reporter.step(
-          curr,
-          total,
-          this.reporter.lang('savingHar', filename),
-          emoji.get('black_circle_for_record'),
-        );
-        await this.config.requestManager.saveHar(filename);
-      });
-    }
-
-    if (await this.shouldClean()) {
-      steps.push(async (curr: number, total: number) => {
-        this.reporter.step(curr, total, this.reporter.lang('cleaningModules'), emoji.get('recycle'));
-        await clean(this.config, this.reporter);
-      });
-    }
 
     let currentStep = 0;
     for (const step of steps) {
@@ -1136,7 +1065,6 @@ export class Install {
    */
 
   maybeOutputUpdate() {}
-  maybeOutputUpdate: any;
 }
 
 export function hasWrapper(commander: Object, args: Array<string>): boolean {
