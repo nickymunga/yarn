@@ -85,55 +85,6 @@ type Flags = {
   workspaceRootIsCwd: boolean,
 };
 
-/**
- * Try and detect the installation method for Yarn and provide a command to update it with.
- */
-
-function getUpdateCommand(installationMethod: InstallationMethod): ?string {
-  if (installationMethod === 'tar') {
-    return `curl --compressed -o- -L ${constants.YARN_INSTALLER_SH} | bash`;
-  }
-
-  if (installationMethod === 'homebrew') {
-    return 'brew upgrade yarn';
-  }
-
-  if (installationMethod === 'deb') {
-    return 'sudo apt-get update && sudo apt-get install yarn';
-  }
-
-  if (installationMethod === 'rpm') {
-    return 'sudo yum install yarn';
-  }
-
-  if (installationMethod === 'npm') {
-    return 'npm install --global yarn';
-  }
-
-  if (installationMethod === 'chocolatey') {
-    return 'choco upgrade yarn';
-  }
-
-  if (installationMethod === 'apk') {
-    return 'apk update && apk add -u yarn';
-  }
-
-  if (installationMethod === 'portage') {
-    return 'sudo emerge --sync && sudo emerge -au sys-apps/yarn';
-  }
-
-  return null;
-}
-
-function getUpdateInstaller(installationMethod: InstallationMethod): ?string {
-  // Windows
-  if (installationMethod === 'msi') {
-    return constants.YARN_INSTALLER_MSI;
-  }
-
-  return null;
-}
-
 function normalizeFlags(config: Config, rawFlags: Object): Flags {
   const flags = {
     // install
@@ -583,8 +534,6 @@ export class Install {
    */
 
   async init(): Promise<Array<string>> {
-    this.checkUpdate();
-
     // warn if we have a shrinkwrap
     if (await fs.exists(path.join(this.config.lockfileFolder, constants.NPM_SHRINKWRAP_FILENAME))) {
       this.reporter.warn(this.reporter.lang('shrinkwrapWarning'));
@@ -770,7 +719,6 @@ export class Install {
         if (auditFoundProblems) {
           this.reporter.warn(this.reporter.lang('auditRunAuditForDetails'));
         }
-        this.maybeOutputUpdate();
         return flattenedTopLevelPatterns;
       }
     }
@@ -784,7 +732,6 @@ export class Install {
     }
     await this.saveLockfileAndIntegrity(topLevelPatterns, workspaceLayout);
     await this.persistChanges();
-    this.maybeOutputUpdate();
     this.config.requestManager.clearCache();
     return flattenedTopLevelPatterns;
   }
@@ -1120,47 +1067,6 @@ export class Install {
       // swallow errors
     });
   }
-
-  async _checkUpdate(): Promise<void> {
-    let latestVersion = await this.config.requestManager.request({
-      url: constants.SELF_UPDATE_VERSION_URL,
-    });
-    invariant(typeof latestVersion === 'string', 'expected string');
-    latestVersion = latestVersion.trim();
-    if (!semver.valid(latestVersion)) {
-      return;
-    }
-
-    // ensure we only check for updates periodically
-    this.config.registries.yarn.saveHomeConfig({
-      lastUpdateCheck: Date.now(),
-    });
-
-    if (semver.gt(latestVersion, YARN_VERSION)) {
-      const installationMethod = await getInstallationMethod();
-      this.maybeOutputUpdate = () => {
-        this.reporter.warn(this.reporter.lang('yarnOutdated', latestVersion, YARN_VERSION));
-
-        const command = getUpdateCommand(installationMethod);
-        if (command) {
-          this.reporter.info(this.reporter.lang('yarnOutdatedCommand'));
-          this.reporter.command(command);
-        } else {
-          const installer = getUpdateInstaller(installationMethod);
-          if (installer) {
-            this.reporter.info(this.reporter.lang('yarnOutdatedInstaller', installer));
-          }
-        }
-      };
-    }
-  }
-
-  /**
-   * Method to override with a possible upgrade message.
-   */
-
-  maybeOutputUpdate() {}
-  maybeOutputUpdate: any;
 }
 
 export function hasWrapper(commander: Object, args: Array<string>): boolean {

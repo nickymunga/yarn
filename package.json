@@ -5,6 +5,7 @@
   "license": "BSD-2-Clause",
   "preferGlobal": true,
   "description": "📦🐈 Fast, reliable, and secure dependency management.",
+  "main": "./lib/index.js",
   "dependencies": {
     "@zkochan/cmd-shim": "^3.1.0",
     "babel-runtime": "^6.26.0",
@@ -57,7 +58,6 @@
   "devDependencies": {
     "babel-core": "^6.26.0",
     "babel-eslint": "^7.2.3",
-    "babel-loader": "^6.2.5",
     "babel-plugin-array-includes": "^2.0.3",
     "babel-plugin-inline-import": "^3.0.0",
     "babel-plugin-transform-builtin-extend": "^1.1.2",
@@ -98,7 +98,6 @@
     "prettier": "^1.5.2",
     "string-replace-loader": "^2.1.1",
     "temp": "^0.8.3",
-    "webpack": "^2.1.0-beta.25",
     "yargs": "^6.3.0"
   },
   "resolutions": {
@@ -108,17 +107,9 @@
     "node": ">=4.0.0"
   },
   "repository": "VincentBailly/yarn",
-  "bin": {
-    "midgard-yarn": "./bin/yarn.js",
-    "midgard-yarnpkg": "./bin/yarn.js"
-  },
   "scripts": {
     "build": "gulp build",
-    "build-bundle": "node ./scripts/build-webpack.js",
-    "build-chocolatey": "powershell ./scripts/build-chocolatey.ps1",
-    "build-deb": "./scripts/build-deb.sh",
     "build-dist": "bash ./scripts/build-dist.sh",
-    "build-win-installer": "scripts\\build-windows-installer.bat",
     "changelog": "git-release-notes $(git describe --tags --abbrev=0 $(git describe --tags --abbrev=0)^)..$(git describe --tags --abbrev=0) scripts/changelog.md",
     "dupe-check": "yarn jsinspect ./src",
     "lint": "eslint . && flow check",
