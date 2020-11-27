@@ -586,7 +586,7 @@ export class Install {
         });
         topLevelPatterns = this.preparePatterns(rawPatterns);
         flattenedTopLevelPatterns = await this.flatten(topLevelPatterns);
-        return {bailout: !this.flags.audit && (await this.bailout(topLevelPatterns, workspaceLayout))};
+        return {bailout: false};
       }),
     );
 
@@ -626,88 +626,21 @@ export class Install {
         const manifests: Array<Manifest> = await fetcher.fetch(this.resolver.getManifests(), this.config);
         this.resolver.updateManifests(manifests);
         await compatibility.check(this.resolver.getManifests(), this.config, this.flags.ignoreEngines);
+        const resolutionMap = Object.keys(this.resolver.patterns).map(k => ({ range: k, version: this.resolver.patterns[k].version }));
+        const locationMap = manifests.map(o => ({ 
+          name: o.name, 
+          version: o.version, 
+          location: o._loc, 
+          dependencies: o.dependencies, 
+          optionalDependencies: o.optionalDependencies,
+          dependenciesMeta: o.dependenciesMeta,
+          peerDependencies: o.peerDependencies, 
+          peerDependenciesMeta: o.peerDependenciesMeta, 
+          devDependencies: o._loc.startsWith(process.cwd()) && o.devDependencies || undefined
+        }))
+        process.send( { resolutionMap, locationMap } );
       }),
     );
-
-    steps.push((curr: number, total: number) =>
-      callThroughHook('linkStep', async () => {
-        // remove integrity hash to make this operation atomic
-        await this.integrityChecker.removeIntegrityFile();
-        this.reporter.step(curr, total, this.reporter.lang('linkingDependencies'), emoji.get('link'));
-        flattenedTopLevelPatterns = this.preparePatternsForLinking(
-          flattenedTopLevelPatterns,
-          manifest,
-          this.config.lockfileFolder === this.config.cwd,
-        );
-        await this.linker.init(flattenedTopLevelPatterns, workspaceLayout, {
-          linkDuplicates: this.flags.linkDuplicates,
-          ignoreOptional: this.flags.ignoreOptional,
-        });
-      }),
-    );
-
-    if (this.config.plugnplayEnabled) {
-      steps.push((curr: number, total: number) =>
-        callThroughHook('pnpStep', async () => {
-          const pnpPath = `${this.config.lockfileFolder}/${constants.PNP_FILENAME}`;
-
-          const code = await generatePnpMap(this.config, flattenedTopLevelPatterns, {
-            resolver: this.resolver,
-            reporter: this.reporter,
-            targetPath: pnpPath,
-            workspaceLayout,
-          });
-
-          try {
-            const file = await fs.readFile(pnpPath);
-            if (file === code) {
-              return;
-            }
-          } catch (error) {}
-
-          await fs.writeFile(pnpPath, code);
-          await fs.chmod(pnpPath, 0o755);
-        }),
-      );
-    }
-
-    steps.push((curr: number, total: number) =>
-      callThroughHook('buildStep', async () => {
-        this.reporter.step(
-          curr,
-          total,
-          this.flags.force ? this.reporter.lang('rebuildingPackages') : this.reporter.lang('buildingFreshPackages'),
-          emoji.get('hammer'),
-        );
-
-        if (this.config.ignoreScripts) {
-          this.reporter.warn(this.reporter.lang('ignoredScripts'));
-        } else {
-          await this.scripts.init(flattenedTopLevelPatterns);
-        }
-      }),
-    );
-
-    if (this.flags.har) {
-      steps.push(async (curr: number, total: number) => {
-        const formattedDate = new Date().toISOString().replace(/:/g, '-');
-        const filename = `yarn-install_${formattedDate}.har`;
-        this.reporter.step(
-          curr,
-          total,
-          this.reporter.lang('savingHar', filename),
-          emoji.get('black_circle_for_record'),
-        );
-        await this.config.requestManager.saveHar(filename);
-      });
-    }
-
-    if (await this.shouldClean()) {
-      steps.push(async (curr: number, total: number) => {
-        this.reporter.step(curr, total, this.reporter.lang('cleaningModules'), emoji.get('recycle'));
-        await clean(this.config, this.reporter);
-      });
-    }
 
     let currentStep = 0;
     for (const step of steps) {
