@@ -234,7 +234,10 @@ export async function makeEnv(
     env.NODE_OPTIONS = `--require ${pnpFile} ${env.NODE_OPTIONS}`;
   }
 
-  pathParts.unshift(await getWrappersFolder(config));
+  // We don't need to wrap node into a node.cmd file. This was introduced for pnp
+  // but we don't use yarn pnp. This results in the args being parsed 4 times by the
+  // command line instead of two, and this breaks the parsing in special cases.
+  // pathParts.unshift(await getWrappersFolder(config));
 
   // join path back together
   env[constants.ENV_PATH_KEY] = pathParts.join(path.delimiter);
