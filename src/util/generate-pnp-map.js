@@ -248,12 +248,10 @@ async function getPackageInformationStores(
 
         switch (ref.remote.type) {
           case 'workspace':
-            {
-              symlinkSource = loc;
-              symlinkFile = path.resolve(config.lockfileFolder, '.pnp', 'workspaces', `pnp-${hash}`, packageName);
+            symlinkSource = loc;
+            symlinkFile = path.resolve(config.lockfileFolder, '.pnp', 'workspaces', `pnp-${hash}`, packageName);
 
-              loc = symlinkFile;
-            }
+            loc = symlinkFile;
             break;
 
           default:

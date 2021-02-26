@@ -1226,6 +1226,7 @@ export async function run(config: Config, reporter: Reporter, flags: Object, arg
 
   // Let time for all the output to be printed and then hard exit.
   // This fixes an issue where a hanging request would keep node alive.
+  // eslint-disable-next-line no-process-exit
   setTimeout(() => process.exit(process.exitCode || 0), 1000);
 }
 

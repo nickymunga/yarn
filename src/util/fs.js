@@ -14,7 +14,7 @@ import BlockingQueue from './blocking-queue.js';
 import * as promise from './promise.js';
 import {promisify} from './promise.js';
 import map from './map.js';
-import {copyFile, fileDatesEqual, unlink} from './fs-normalized.js';
+import {fileDatesEqual, unlink} from './fs-normalized.js';
 
 export const constants =
   typeof fs.constants !== 'undefined'
@@ -513,14 +513,16 @@ export function copy(src: string, dest: string, reporter: Reporter): Promise<voi
   return copyBulk([{src, dest}], reporter);
 }
 
-const { Worker } = require('worker_threads');
-function spawnWorker() {
-    return new Worker(require('path').join(__dirname, '..', 'worker.js'));
+const {Worker} = require('worker_threads');
+function spawnWorker(): Worker {
+  return new Worker(require('path').join(__dirname, '..', 'worker.js'));
 }
 
-const numberOfWorkers = process.env.WORKERS_LIMIT ? parseInt(process.env.WORKERS_LIMIT) : Math.ceil(os.cpus().length/ 2)
+const numberOfWorkers = process.env.WORKERS_LIMIT
+  ? parseInt(process.env.WORKERS_LIMIT, 10)
+  : Math.ceil(os.cpus().length / 2);
 
-export function createWorkers() {
+export function createWorkers(): Array<Worker> {
   const workers = [];
 
   for (let i = 0; i < numberOfWorkers; i++) {

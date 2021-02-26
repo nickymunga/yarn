@@ -180,7 +180,6 @@ export default class Lockfile {
     }
 
     if (lockfile && lockfile.__metadata) {
-      const lockfilev2 = lockfile;
       lockfile = {};
     }
 

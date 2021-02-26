@@ -16,7 +16,7 @@ import map from '../util/map.js';
 
 import typeof * as RequestModuleT from 'request';
 
-import { Transform } from "stream";
+import {Transform} from 'stream';
 
 /*
  * PassThrough stream in the pipelines to add
@@ -25,8 +25,12 @@ import { Transform } from "stream";
  */
 class BufferStream extends Transform {
   constructor() {
-    super({transform: (chunk, encoding, callback) => { callback(null, chunk) }, highWaterMark: 16384 * 100000})
-
+    super({
+      transform: (chunk, encoding, callback) => {
+        callback(null, chunk);
+      },
+      highWaterMark: 16384 * 100000,
+    });
   }
 }
 
@@ -220,7 +224,7 @@ export default class RequestManager {
    * second identical request will be fired and the two requests will race.
    * This is a workaround for issues with the npm feed being very slow on random requests.
    */
-  requestWithRacingRetry() {
+  requestWithRacingRetry(): Object {
     const request = require('request');
 
     const decoratedRequest = (...params) => {
@@ -229,7 +233,7 @@ export default class RequestManager {
 
       // Variables keeping the state of the race.
       let req2 = undefined;
-      let streams = [];
+      const streams = [];
       const callbacks = {};
       let done = false;
       let aborted = false;
@@ -272,7 +276,7 @@ export default class RequestManager {
           callbacks['response'] && callbacks['response'](...args);
 
           // If the callback has not aborted the request
-          if(!aborted) {
+          if (!aborted) {
             // We pipe the streams, and resume to let the data flow
             req2.pipe(bufferStream);
             streams.forEach(s => bufferStream.pipe(s));
@@ -311,7 +315,7 @@ export default class RequestManager {
         callbacks['response'] && callbacks['response'](...args);
 
         // If the callback has not aborted the request
-        if(!aborted) {
+        if (!aborted) {
           // We pipe the streams, and resume to let the data flow
           req1.pipe(bufferStream);
           streams.forEach(s => bufferStream.pipe(s));
@@ -320,7 +324,6 @@ export default class RequestManager {
         req2 && req2.abort();
         req2 = undefined;
         req1 = undefined;
-
       });
 
       // We return a fake request which implements the API that yarn uses
@@ -390,7 +393,6 @@ export default class RequestManager {
     );
 
     const promise = new Promise((resolve, reject) => {
-
       /*
        * This is a workaround for a bug that we have not been able to track down.
        *
@@ -405,18 +407,16 @@ export default class RequestManager {
        */
       const t = setTimeout(() => {
         throw new Error(`Fetching/extracting of package ${params.url} seems to be hanging.`);
-
       }, 10 * 60 * 1000);
-
 
       const rej = (...args) => {
         reject(...args);
         clearTimeout(t);
-      }
+      };
       const res = (...args) => {
         resolve(...args);
         clearTimeout(t);
-      }
+      };
 
       this.queue.push({params, reject: rej, resolve: res});
       this.shiftQueue();
@@ -688,15 +688,16 @@ export default class RequestManager {
         }
 
         const description = `${res.statusCode} ${http.STATUS_CODES[res.statusCode]}`;
-        queueForRetry(`request failed with ${res.statusCode}`) || reject(new ResponseError(this.reporter.lang('requestFailed', description), res.statusCode));
+        queueForRetry(`request failed with ${res.statusCode}`) ||
+          reject(new ResponseError(this.reporter.lang('requestFailed', description), res.statusCode));
 
         req.abort();
       });
 
       // We retry when we fail to process the content
-      const rej = (err) => {
-        queueForRetry("extraction failed, package content seems to be corrupt") || reject(err);
-      }
+      const rej = err => {
+        queueForRetry('extraction failed, package content seems to be corrupt') || reject(err);
+      };
 
       process(req, resolve, rej);
     }
