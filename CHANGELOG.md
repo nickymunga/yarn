@@ -4,6 +4,10 @@ Please add one entry in this file for each change in Yarn's behavior. Use the sa
 
 ## Master
 
+- Add option --error-log-file to customize where yarn-error.log file is written
+
+  [#44](https://github.com/VincentBailly/yarn/pull/44) - [**Danny van Velzen**](https://github.com/dannyvv)
+
 - Passes arguments following `--` when running a workspace script (`yarn workspace pkg run command -- arg`)
 
   [#7776](https://github.com/yarnpkg/yarn/pull/7776) - [**Jeff Valore**](https://twitter.com/rally25rs)

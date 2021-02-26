@@ -104,6 +104,10 @@ export async function main({
   commander.option('--link-folder <path>', 'specify a custom folder to store global links');
   commander.option('--global-folder <path>', 'specify a custom folder to store global packages');
   commander.option(
+    '--error-log-file <path>',
+    'specify a custom file path to log error details to when an error occurs',
+  );
+  commander.option(
     '--modules-folder <path>',
     'rather than installing modules into the node_modules folder relative to the cwd, output them here',
   );
@@ -502,9 +506,11 @@ export async function main({
   }
 
   function writeErrorReport(log): ?string {
-    const errorReportLoc = config.enableMetaFolder
-      ? path.join(config.cwd, constants.META_FOLDER, 'yarn-error.log')
-      : path.join(config.cwd, 'yarn-error.log');
+    const errorReportLoc = config.errorLogFile
+      ? path.resolve(config.cwd, config.errorLogFile) // Use resolve to allow for relative and absolute paths
+      : config.enableMetaFolder
+        ? path.join(config.cwd, constants.META_FOLDER, 'yarn-error.log')
+        : path.join(config.cwd, 'yarn-error.log');
 
     try {
       fs.writeFileSync(errorReportLoc, log.join('\n\n') + '\n');
@@ -533,6 +539,7 @@ export async function main({
       cwd,
       commandName,
       ...resolvedFolderOptions,
+      errorLogFile: commander.errorLogFile,
       enablePnp: commander.pnp,
       disablePnp: commander.disablePnp,
       enableDefaultRc: commander.defaultRc,

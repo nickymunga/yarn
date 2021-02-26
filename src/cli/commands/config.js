@@ -17,6 +17,7 @@ const CONFIG_KEYS = [
   'preferOffline',
   'modulesFolder',
   'globalFolder',
+  'errorLogFile',
   'linkFolder',
   'offline',
   'binLinks',

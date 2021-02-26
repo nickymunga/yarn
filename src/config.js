@@ -53,6 +53,7 @@ export type ConfigOptions = {
   enablePnp?: boolean,
   disablePnp?: boolean,
   offlineCacheFolder?: string,
+  errorLogFile?: string,
 
   enableDefaultRc?: boolean,
   extraneousYarnrcFiles?: Array<string>,
@@ -349,6 +350,11 @@ export default class Config {
     this.globalFolder = opts.globalFolder || String(this.getOption('global-folder', true));
     if (this.globalFolder === 'undefined') {
       this.globalFolder = constants.GLOBAL_MODULE_DIRECTORY;
+    }
+
+    this.errorLogFile = opts.errorLogFile || String(this.getOption('error-log-file', true));
+    if (this.errorLogFile === 'undefined') {
+      this.errorLogFile = undefined;
     }
 
     let cacheRootFolder = opts.cacheFolder || this.getOption('cache-folder', true);
