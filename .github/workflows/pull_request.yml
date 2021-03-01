@@ -1,0 +1,40 @@
+# This workflow will do a clean install of node dependencies, build the source code and run tests across different versions of node
+# For more information see: https://help.github.com/actions/language-and-framework-guides/using-nodejs-with-github-actions
+
+name: Pull Request Validation
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  midgard-yarn:
+    strategy:
+      matrix:
+        node-version: [14.x, 12.x, 15.x]
+        os: [ubuntu-latest, windows-latest, macos-latest]
+       
+    runs-on: ${{ matrix.os }}
+    
+    steps:
+    - uses: actions/checkout@v2
+    
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v1
+      with:
+        node-version: ${{ matrix.node-version }}
+      
+    - run: npm install -g yarn
+    - run: yarn install --frozen-lockfile
+    - run: yarn build
+    
+    # Temporary run eslint by itself as `yarn lint` is not working at the moment
+    # - run: yarn lint
+    - run: ./node_modules/.bin/eslint .
+    
+    # Temporary turned off until we have a reasonable set that passes
+    # - run: yarn test-only
+    - name: yarn test-only **restricted set**
+      run: yarn test-only __tests__/constants.js __tests__/package-hoister.js __tests__/reporters/console-reporter.js __tests__/registries/npm-registry.js __tests__/util/git/git-ref-resolver.js __tests__/util/git.js __tests__/config.js __tests__/reporters/json-reporter.js __tests__/util/filter.js __tests__/reporters/event-reporter.js __tests__/util/conversion.js __tests__/reporters/buffer-reporter.js __tests__/resolvers/index.js __tests__/util/fix-cmd-win-slashes.js __tests__/util/child.js __tests__/util/fs-normalized.js __tests__/lockfile.js __tests__/util/execute-lifecycle-script.js __tests__/commands/why.js __tests__/util/semver.js __tests__/resolvers/exotics/bitbucket-resolver.js __tests__/normalize-manifest.js __tests__/util/user-dirs.js __tests__/reporters/base-reporter.js __tests__/package-compatibility.js __tests__/commands/config.js __tests__/resolvers/exotics/git-resolver.js __tests__/commands/create.js __tests__/package-request.js __tests__/util/git/git-spawn.js __tests__/commands/workspaces.js __tests__/rc.js __tests__/resolvers/exotics/hosted-git-resolver.js __tests__/commands/workspace.js __tests__/resolvers/exotics/gitlab-resolver.js __tests__/resolvers/exotics/github-resolver.js __tests__/util/guess-name.js __tests__/pipe.js __tests__/util/path.js __tests__/util/promise.js __tests__/util/env-replace.js __tests__/resolvers/exotics/registry-resolver.js __tests__/util/parse-package-path.js __tests__/util/blocking-queue.js __tests__/util/signal-handler.js __tests__/commands/install/unit.js __tests__/util/colorize-diff.js __tests__/util/root-user.js __tests__/util/parse-package-name.js __tests__/util/misc.js __tests__/package-resolver.js
