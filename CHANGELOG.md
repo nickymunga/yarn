@@ -4,6 +4,10 @@ Please add one entry in this file for each change in Yarn's behavior. Use the sa
 
 ## Master
 
+- Prune scoped packages being hoisted while running yarn install
+
+  [#44](https://github.com/VincentBailly/yarn/pull/49) - [**Nayan Shah**](https://github.com/nayanshah) / [**Justin**](https://github.com/greyepoxy)
+
 - Add option --error-log-file to customize where yarn-error.log file is written
 
   [#44](https://github.com/VincentBailly/yarn/pull/44) - [**Danny van Velzen**](https://github.com/dannyvv)
