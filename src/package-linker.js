@@ -45,20 +45,21 @@ export async function linkBin(src: string, dest: string): Promise<void> {
     return;
   }
   memo.add(key);
-  if (process.platform === 'win32') {
-    // In the official version of yarn, the key of the mutex is the src, not the dest.
-    // This was a mistake from the author of this code, he admitted it but did not fix it.
-    // https://github.com/yarnpkg/yarn/pull/2795#issuecomment-301756593
-    const unlockMutex = await lockMutex(dest);
-    try {
-      await cmdShim(src, dest, {createPwshFile: false});
-    } finally {
-      unlockMutex();
+
+  // In the official version of yarn, the key of the mutex is the src, not the dest.
+  // This was a mistake from the author of this code, he admitted it but did not fix it.
+  // https://github.com/yarnpkg/yarn/pull/2795#issuecomment-301756593
+  const unlockMutex = await lockMutex(dest);
+  try {
+    if (process.platform === 'win32') {
+        await cmdShim(src, dest, {createPwshFile: false});
+    } else {
+      await fs.mkdirp(path.dirname(dest));
+      await fs.symlink(src, dest);
+      await fs.chmod(dest, '755');
     }
-  } else {
-    await fs.mkdirp(path.dirname(dest));
-    await fs.symlink(src, dest);
-    await fs.chmod(dest, '755');
+  } finally {
+    unlockMutex();
   }
 }
 
