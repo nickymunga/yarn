@@ -10,6 +10,7 @@ midgard-yarn has the following improvements over yarn:
 - *[performance]* optimize cycle-detection algorithm from o(n2) to o(n.log(n)).
 - *[feature]* add support for --frozen-lockfile in monorepos.
 - *[bug fix]* yarn would not properly remove scoped package from `node_modules` after uninstalling this dependency.
+- *[performance and reliability]* optimize creation of bin scripts for large repos.
 
 
 ## Contributions
