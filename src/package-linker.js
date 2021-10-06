@@ -22,17 +22,34 @@ const invariant = require('invariant');
 const cmdShim = require('@zkochan/cmd-shim');
 const path = require('path');
 const semver = require('semver');
-// Concurrency for creating bin links disabled because of the issue #1961
-const linkBinConcurrency = 1;
+// In the official yarn, this concurrency has been set to
+// 1 as a very easy way to fix a race condition issue which is now fixed
+// in midgard-yarn, https://github.com/yarnpkg/yarn/pull/3097
+// Setting the concurrency high makes a noticeable difference for the performance in
+// large monorepos.
+const linkBinConcurrency = 500;
 
 type DependencyPairs = Array<{
   dep: Manifest,
   loc: string,
 }>;
 
+const memo = new Set();
 export async function linkBin(src: string, dest: string): Promise<void> {
+  const key = `${src}__${dest}`;
+  // The way the yarn iterates over all the workspaces to create the bin links has the
+  // effect of creating many times the same bin link.
+  // This has consequence on performance and also create transient EPERM errors on Windows.
+  // Skipping creating the same link again fixes this issue.
+  if (memo.has(key)) {
+    return;
+  }
+  memo.add(key);
   if (process.platform === 'win32') {
-    const unlockMutex = await lockMutex(src);
+    // In the official version of yarn, the key of the mutex is the src, not the dest.
+    // This was a mistake from the author of this code, he admitted it but did not fix it.
+    // https://github.com/yarnpkg/yarn/pull/2795#issuecomment-301756593
+    const unlockMutex = await lockMutex(dest);
     try {
       await cmdShim(src, dest, {createPwshFile: false});
     } finally {
