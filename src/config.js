@@ -879,7 +879,9 @@ export default class Config {
 
     // packages
     if (wsCopy.packages && wsCopy.packages.length > 0 && !manifest.private) {
-      errors.push(this.reporter.lang('workspacesRequirePrivateProjects'));
+      if (!manifest._loc.startsWith(this.cacheFolder)) {
+        errors.push(`${this.reporter.lang('workspacesRequirePrivateProjects')} ${manifest.name}`);
+      }
       wsCopy = undefined;
     }
     // nohoist
