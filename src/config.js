@@ -254,7 +254,7 @@ export default class Config {
   async init(opts: ConfigOptions = {}): Promise<void> {
     this._init(opts);
 
-    this.workspaceRootFolder = await this.findWorkspaceRoot(this.cwd);
+    this.workspaceRootFolder = this.getDefaultWorkspaceRootFromEnv() || await this.findWorkspaceRoot(this.cwd);
     this.lockfileFolder = this.workspaceRootFolder || this.cwd;
 
     // using focus in a workspace root is not allowed
@@ -386,21 +386,23 @@ export default class Config {
       this._cacheRootFolder = String(cacheRootFolder);
     }
 
-    const manifest = await this.maybeReadManifest(this.lockfileFolder);
+    if (this.commandName !== 'run') {
+      const manifest = await this.maybeReadManifest(this.lockfileFolder);
 
-    const plugnplayByEnv = this.getOption('plugnplay-override');
-    if (plugnplayByEnv != null) {
-      this.plugnplayEnabled = plugnplayByEnv !== 'false' && plugnplayByEnv !== '0';
-      this.plugnplayPersist = false;
-    } else if (opts.enablePnp || opts.disablePnp) {
-      this.plugnplayEnabled = !!opts.enablePnp;
-      this.plugnplayPersist = true;
-    } else if (manifest && manifest.installConfig && manifest.installConfig.pnp) {
-      this.plugnplayEnabled = !!manifest.installConfig.pnp;
-      this.plugnplayPersist = false;
-    } else {
-      this.plugnplayEnabled = false;
-      this.plugnplayPersist = false;
+      const plugnplayByEnv = this.getOption('plugnplay-override');
+      if (plugnplayByEnv != null) {
+        this.plugnplayEnabled = plugnplayByEnv !== 'false' && plugnplayByEnv !== '0';
+        this.plugnplayPersist = false;
+      } else if (opts.enablePnp || opts.disablePnp) {
+        this.plugnplayEnabled = !!opts.enablePnp;
+        this.plugnplayPersist = true;
+      } else if (manifest && manifest.installConfig && manifest.installConfig.pnp) {
+        this.plugnplayEnabled = !!manifest.installConfig.pnp;
+        this.plugnplayPersist = false;
+      } else {
+        this.plugnplayEnabled = false;
+        this.plugnplayPersist = false;
+      }
     }
 
     if (process.platform === 'win32') {
@@ -499,6 +501,10 @@ export default class Config {
     this.focusedWorkspaceName = '';
 
     this.otp = opts.otp || '';
+  }
+
+  getDefaultWorkspaceRootFromEnv(){
+    return process.env.DEFAULT_WORKSPACE_ROOT_FOLDER || undefined;
   }
 
   /**
